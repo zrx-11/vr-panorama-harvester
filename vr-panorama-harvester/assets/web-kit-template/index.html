@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>杭电下沙校区 · 全景点位库</title>
+<link rel="stylesheet" href="css/pano-viewer.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="hd">
+    <div>
+      <h1>{{SITE_TITLE}}</h1>
+      <div class="sub">{{SITE_SUBTITLE}}</div>
+    </div>
+    <div class="stat">
+      <div><b id="st-total">0</b><span>点位</span></div>
+      <div><b>54</b><span>720yun 主套</span></div>
+      <div><b>19</b><span>一拳套</span></div>
+    </div>
+  </header>
+
+  <div class="bar">
+    <button class="chip" data-f="all" aria-pressed="true">全部</button>
+    <button class="chip" data-f="720yun" aria-pressed="false">720yun 主套</button>
+    <button class="chip" data-f="yiquan" aria-pressed="false">一拳套</button>
+    <button class="chip" data-f="航拍" aria-pressed="false">仅航拍</button>
+    <button class="chip" data-f="校门" aria-pressed="false">校门</button>
+    <input id="q" class="search" type="search" placeholder="搜索楼名 / 学院 / 地点，如「图书馆」「月雅湖」" autocomplete="off">
+    <span class="count" id="count"></span>
+  </div>
+
+  <main class="grid" id="grid"></main>
+</div>
+
+<section class="viewer" id="viewer" aria-hidden="true">
+  <div class="bar2">
+    <span class="title" id="v-title">—</span>
+    <span class="badge" id="v-badge">—</span>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="v-auto" aria-pressed="false">自动旋转</button>
+    <button class="iconbtn" id="v-reset">重置视角</button>
+    <button class="iconbtn" id="v-full">全屏</button>
+    <button class="iconbtn" id="v-open">看原图</button>
+    <button class="iconbtn" id="v-close">关闭</button>
+  </div>
+  <div class="stage" id="stage" tabindex="0"></div>
+  <div class="caption" id="v-cap"></div>
+  <div class="hint" id="v-hint">拖拽环视 · 滚轮缩放 · 方向键微调</div>
+</section>
+
+<script src="js/pano-data.js"></script>
+<script src="js/pano-viewer.js"></script>
+<script>
+(function () {
+  var POINTS = window.PANO_POINTS || [];
+  var grid = document.getElementById('grid');
+  var q = document.getElementById('q');
+  var countEl = document.getElementById('count');
+  var viewer = document.getElementById('viewer');
+  var stage = document.getElementById('stage');
+  var titleEl = document.getElementById('v-title');
+  var badgeEl = document.getElementById('v-badge');
+  var capEl = document.getElementById('v-cap');
+  var hintEl = document.getElementById('v-hint');
+  var vp = null, current = null, filter = 'all';
+
+  document.getElementById('st-total').textContent = POINTS.length;
+
+  function matches(p) {
+    if (filter === '720yun' && p.source !== '720yun') return false;
+    if (filter === 'yiquan' && p.source !== 'yiquan') return false;
+    if (filter === '航拍' && p.type !== '航拍') return false;
+    if (filter === '校门' && p.type !== '校门') return false;
+    var k = (q.value || '').trim().toLowerCase();
+    if (!k) return true;
+    return (p.name + ' ' + p.id + ' ' + p.source).toLowerCase().indexOf(k) >= 0;
+  }
+
+  function render() {
+    var list = POINTS.filter(matches);
+    countEl.textContent = '显示 ' + list.length + ' / ' + POINTS.length;
+    if (!list.length) {
+      grid.innerHTML = '<div class="empty">没有匹配的点位，换个关键词试试</div>';
+      return;
+    }
+    grid.innerHTML = list.map(function (p) {
+      return '<button class="card" data-id="' + p.id + '" type="button">' +
+        '<div class="thumb"><img loading="lazy" src="' + p.thumb + '" alt="' + p.name + ' 全景缩略图">' +
+        '<span class="tag' + (p.type === '航拍' ? ' hi' : '') + '">' +
+        (p.type === '航拍' ? '航拍' : (p.source === '720yun' ? '720yun' : '一拳')) + '</span></div>' +
+        '<div class="meta"><div class="name">' + p.name + '</div>' +
+        '<div class="src">' + p.id + ' · ' + p.res + '</div></div></button>';
+    }).join('');
+  }
+
+  grid.addEventListener('click', function (e) {
+    var card = e.target.closest('.card');
+    if (!card) return;
+    var p = POINTS.filter(function (x) { return x.id === card.dataset.id; })[0];
+    if (p) open(p);
+  });
+
+  q.addEventListener('input', render);
+  document.querySelectorAll('.chip').forEach(function (b) {
+    b.addEventListener('click', function () {
+      filter = b.dataset.f;
+      document.querySelectorAll('.chip').forEach(function (x) {
+        x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+      });
+      render();
+    });
+  });
+
+  function open(p) {
+    current = p;
+    viewer.classList.add('on');
+    viewer.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    titleEl.textContent = p.name;
+    badgeEl.textContent = (p.source === '720yun' ? '720yun 主套' : '一拳套 · 约2016年') + ' · ' + p.res;
+    capEl.textContent = p.id + ' · 2:1 等距柱状全景 · 拖拽环视四周';
+    if (!vp) vp = new window.PanoViewer(stage, { autoRotate: false });
+    vp.setView(0, 0, 78);
+    document.getElementById('v-auto').setAttribute('aria-pressed', 'false');
+    vp.setAutoRotate(false);
+    vp.load(p.img);
+    stage.focus();
+    if (history.replaceState) history.replaceState(null, '', '#p=' + p.id);
+  }
+
+  function close() {
+    viewer.classList.remove('on');
+    viewer.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    if (history.replaceState) history.replaceState(null, '', location.pathname);
+  }
+
+  document.getElementById('v-close').addEventListener('click', close);
+  document.getElementById('v-reset').addEventListener('click', function () {
+    if (vp) vp.setView(0, 0, 78);
+  });
+  document.getElementById('v-auto').addEventListener('click', function () {
+    var on = this.getAttribute('aria-pressed') !== 'true';
+    this.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (vp) vp.setAutoRotate(on);
+  });
+  document.getElementById('v-full').addEventListener('click', function () {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (viewer.requestFullscreen) viewer.requestFullscreen();
+  });
+  document.getElementById('v-open').addEventListener('click', function () {
+    if (current) window.open(current.img, '_blank');
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && viewer.classList.contains('on')) close();
+  });
+  hintEl.addEventListener('click', function () { hintEl.style.display = 'none'; });
+
+  render();
+
+  // 支持 ?p=/ #p= 直接定位到某个点位，便于分享与截图
+  var m = (location.hash + location.search).match(/p=(.+)/);
+  if (m) {
+    var target = POINTS.filter(function (x) { return x.id === decodeURIComponent(m[1]); })[0];
+    if (target) open(target);
+  }
+})();
+</script>
+</body>
+</html>

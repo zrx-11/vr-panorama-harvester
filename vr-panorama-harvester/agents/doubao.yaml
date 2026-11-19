@@ -1,0 +1,7 @@
+interface:
+  display_name: "VR全景素材拆解"
+  short_description: "从VR全景网页抓取切片、重投影并打包成建模参考素材库"
+  default_prompt: "使用 $vr-panorama-harvester 帮我完成……"
+
+policy:
+  allow_implicit_invocation: true
