@@ -1,0 +1,7 @@
+interface:
+  display_name: "全景切片提取"
+  short_description: "从VR全景网页抓取切片并重投影为位图素材库"
+  default_prompt: "使用 $vr-panorama-extractor 帮我完成……"
+
+policy:
+  allow_implicit_invocation: true

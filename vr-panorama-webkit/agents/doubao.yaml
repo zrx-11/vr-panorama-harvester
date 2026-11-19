@@ -1,0 +1,7 @@
+interface:
+  display_name: "全景网页集成包"
+  short_description: "把全景素材打包成零依赖可运行的网页集成包"
+  default_prompt: "使用 $vr-panorama-webkit 帮我完成……"
+
+policy:
+  allow_implicit_invocation: true
